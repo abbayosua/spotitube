@@ -23,8 +23,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!query.trim()) return;
 
     setLoading(true);
@@ -62,8 +65,9 @@ export default function Home() {
               className="flex-1 px-4 py-2 rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
             />
             <button
-              type="submit"
+              type="button"
               disabled={loading}
+              onClick={handleSearch}
               className="px-6 py-2 bg-red-600 text-white rounded-full font-medium hover:bg-red-700 disabled:opacity-50"
             >
               {loading ? 'Searching...' : 'Search'}
