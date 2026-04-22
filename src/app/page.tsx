@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface VideoItem {
@@ -17,24 +18,30 @@ interface SearchResult {
   nextPage?: { nextPageToken: string };
 }
 
-export default function Home() {
-  const [query, setQuery] = useState('');
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialQuery = searchParams.get('q') || '';
+  
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(!!initialQuery);
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
+  useEffect(() => {
+    if (initialQuery) {
+      performSearch(initialQuery);
     }
-    if (!query.trim()) return;
+  }, [initialQuery]);
+
+  const performSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
 
     setLoading(true);
     setHasSearched(true);
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=20`);
       const data: SearchResult = await response.json();
       setResults(data.items || []);
     } catch (error) {
@@ -42,6 +49,17 @@ export default function Home() {
       setResults([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (!query.trim()) return;
+    router.push(`/?q=${encodeURIComponent(query)}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
     }
   };
 
@@ -56,11 +74,12 @@ export default function Home() {
             <span className="text-xl font-bold text-zinc-900 dark:text-white">SpotiTube</span>
           </Link>
           
-          <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="flex gap-2">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Search videos..."
               className="flex-1 px-4 py-2 rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
             />
@@ -72,7 +91,7 @@ export default function Home() {
             >
               {loading ? 'Searching...' : 'Search'}
             </button>
-          </form>
+          </div>
         </div>
       </header>
 
@@ -138,5 +157,17 @@ export default function Home() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
